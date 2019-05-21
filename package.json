@@ -1,0 +1,32 @@
+{
+	"name": "percolate",
+	"version": "0.1.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"make-node": ""
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/joeltg/percolate.git"
+	},
+	"author": "Joel Gustafson",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/joeltg/percolate/issues"
+	},
+	"homepage": "https://github.com/joeltg/percolate#readme",
+	"dependencies": {
+		"cbor": "^4.1.5",
+		"ipfs": "^0.35.0",
+		"jsonld": "^1.6.1",
+		"libp2p-bootstrap": "^0.9.7",
+		"libp2p-kad-dht": "^0.15.0",
+		"libp2p-mplex": "^0.8.5",
+		"libp2p-secio": "^0.11.1",
+		"libp2p-tcp": "^0.13.0",
+		"pull-stream": "^3.6.11",
+		"stream-to-pull-stream": "^1.7.3"
+	}
+}
