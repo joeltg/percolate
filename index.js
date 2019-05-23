@@ -1,11 +1,14 @@
 const IPFS = require("ipfs")
-
+const { N3 } = require("../shex.js")
+const ShExParser = require("../shex.js/packages/shex-parser")
+const ShExCore = require("../shex.js/packages/shex-core")
 const cbor = require("cbor")
 const jsonld = require("jsonld")
 
 const pull = require("pull-stream/pull")
 const Pushable = require("pull-pushable")
 const drain = require("pull-stream/sinks/drain")
+const asyncMap = require("pull-stream/throughs/async-map")
 const { transform } = require("stream-to-pull-stream")
 
 const config = require("./config.js")
@@ -14,14 +17,32 @@ const libp2p = require("./libp2p.js")
 const { PeerId } = IPFS
 
 class Percolator {
-	// Options for jsonld.frame
-	static frame = { processingMode: "json-ld-1.1", omitGraph: false }
-	// Options for jsonld.canonize
-	static canonize = { algorithm: "URDNA2015", format: "application/n-quads" }
 	// Underlay Protocol String
 	static protocol = "/ul/0.1.1/cbor-ld"
 	static matchProtocol(protocol, sourceProtocol, callback) {
 		callback(null, protocol === sourceProtocol)
+	}
+
+	static ShExParser = ShExParser.construct()
+
+	static canonize(data, callback) {
+		jsonld.canonize(
+			data,
+			{ algorithm: "URDNA2015", format: "application/n-quads" },
+			callback
+		)
+	}
+
+	static parse(data, callback) {
+		const store = new N3.Store()
+		const parser = new N3.StreamParser({
+			format: "application/n-quads",
+			blankNodePrefix: "_:",
+		})
+		parser.on("end", () => callback(null, store))
+		parser.on("error", err => callback(err))
+		parser.on("data", quad => store.addQuad(quad))
+		parser.end(data)
 	}
 
 	constructor(repo, init, userConfig) {
@@ -38,9 +59,11 @@ class Percolator {
 			libp2p: libp2p,
 		})
 
+		this.libp2p = this.ipfs.libp2p
+
 		this.ipfs.on("ready", () => {
-			this.ipfs.libp2p.on("peer:connect", this.handlePeerConnect)
-			this.ipfs.libp2p.handle(
+			this.libp2p.on("peer:connect", this.handlePeerConnect)
+			this.libp2p.handle(
 				Percolator.protocol,
 				this.handleProtocol,
 				Percolator.matchProtocol
@@ -48,61 +71,87 @@ class Percolator {
 		})
 	}
 
-	async next(doc, peerId, index) {
-		if (isNaN(index)) index = 0
-		const { frame, callback } = this.handlers[index]
-		const framed = await jsonld.frame(doc, frame, Percolator.frame)
-		if (framed["@graph"].length > 0) {
-			callback(framed, peerId, () => this.next(doc, peerId, i + 1))
-		} else {
-			this.next(doc, peerId, index + 1)
-		}
-	}
-
-	connect(peer, connection) {
-		const id = peer.id.toB58String()
-		this.outbox[id] = Pushable()
-
-		pull(
-			this.outbox[id],
-			transform(new cbor.Decoder()),
-			connection,
-			transform(new cbor.Encoder()),
-			drain(doc => this.next(doc, id, 0), () => {})
-		)
-	}
-
-	handleProtocol(_, connection) {
-		connection.getPeerInfo((err, peer) => {
-			if (err) console.error(err)
-			else this.connect(peer, connection)
-		})
-	}
-
-	handlePeerConnect(peer) {
-		if (peer.protocols.has(protocol)) {
-			this.ipfs.libp2p.dialProtocol(peer, protocol, (err, connection) => {
-				if (err) console.error(err)
-				else this.connect(peer, connection)
+	handlePeerConnect(peerInfo) {
+		if (peerInfo.protocols.has(protocol)) {
+			this.libp2p.dialProtocol(peerInfo, protocol, (err, connection) => {
+				if (err) {
+					console.error(err)
+				} else {
+					this.connect(peerInfo, connection)
+				}
 			})
 		}
 	}
 
-	frame(frame, handler) {
-		this.handlers.push({ frame, handler })
+	handleProtocol(_, connection) {
+		connection.getPeerInfo((err, peerInfo) => {
+			if (err) {
+				console.error(err)
+			} else {
+				this.connect(peerInfo, connection)
+			}
+		})
+	}
+
+	connect(peerInfo, connection) {
+		const peer = peerInfo.id.toB58String()
+		this.outbox[peer] = Pushable()
+
+		pull(
+			this.outbox[peer],
+			transform(new cbor.Encoder()),
+			connection,
+			transform(new cbor.Decoder()),
+			asyncMap(Percolator.canonize),
+			asyncMap(Percolator.parse),
+			drain(store => this.next(peer, store, 0), () => {})
+		)
+	}
+
+	next(peer, store, index) {
+		if (index < this.handlers.length) {
+			const handler = this.handlers[index]
+			const next = () => this.next(peer, store, index + 1)
+			handler(peer, store, next)
+		}
+	}
+
+	handle(handler) {
+		this.handlers.push(handler)
+	}
+
+	shape(schema, start, handler) {
+		if (typeof schema === "string") {
+			schema = Percolator.ShExParser.parse(schema)
+		}
+
+		if (handler === undefined) {
+			handler = start
+			start = schema.start
+		}
+
+		const validator = ShExCore.Validator.construct(schema)
+		this.handlers.push((peer, store, next) => {
+			const db = ShExCore.Util.makeN3DB(store)
+			const result = validator.validate(db, "_:b0", start)
+			if (result.type === "Failure") {
+				next()
+			} else if (result.type === "ShapeTest") {
+				handler(peer, store, next)
+			}
+		})
 	}
 
 	start(callback) {
 		this.ipfs.start(callback)
 	}
 
-	send(peerId, message) {
-		if (peerId instanceof PeerId) {
-			peerId = peerId.toB58String()
+	send(peer, message) {
+		if (peer instanceof PeerId) {
+			peer = peer.toB58String()
 		}
-
-		if (this.outbox.hasOwnProperty(peerId)) {
-			this.outbox[peerId].push(message)
+		if (this.outbox.hasOwnProperty(peer)) {
+			this.outbox[peer].push(message)
 		}
 	}
 }
