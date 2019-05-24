@@ -2,6 +2,8 @@ type Container<T> = T | T[]
 type RecursiveContainer<T> = T | RecursiveArray<T>
 interface RecursiveArray<T> extends Array<RecursiveContainer<T>> {}
 
+export default JsonLd
+
 declare namespace JsonLd {
 	export type Graph = Container<Node>
 

@@ -1,15 +1,17 @@
-const IPFS = require("ipfs")
 const { N3 } = require("../shex.js")
 const ShExParser = require("../shex.js/packages/shex-parser")
 const ShExCore = require("../shex.js/packages/shex-core")
-const cbor = require("cbor")
+
 const jsonld = require("jsonld")
+const cbor = require("cbor")
 
 const pull = require("pull-stream/pull")
 const Pushable = require("pull-pushable")
 const drain = require("pull-stream/sinks/drain")
 const asyncMap = require("pull-stream/throughs/async-map")
 const { transform } = require("stream-to-pull-stream")
+
+const IPFS = require("ipfs")
 
 const config = require("./config.js")
 const libp2p = require("./libp2p.js")
@@ -116,7 +118,7 @@ class Percolator {
 		}
 	}
 
-	handle(handler) {
+	use(handler) {
 		this.handlers.push(handler)
 	}
 

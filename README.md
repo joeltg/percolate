@@ -8,23 +8,31 @@ It's built on [IPFS](https://github.com/ipfs/js-ipfs) and [libp2p](https://githu
 
 ```javascript
 const Percolate = require("./percolate/index.js")
+const Shape = require("./percolate/tools/shape.js")
 
 const prcltr = new Percolate()
 
-// Handle every message that has a node with an rdf:type of schema:Person
-prcltr.frame(
-	peerId => true, // optional source predicate that gets passed the sender PeerId *instance*
-	{ "@type": "http://schema.org/Person" },
-	(source, message, next) => {
-		// message is a JSON-LD document
-		// source is a base-58-encoded PeerId
-		// next is a function of no arguments that invokes the next matching handler
+// This ShEx schema validates nodes of rdf:type schema.org/Person
+// that have a name, a birthday, and zero or more friends.
+const schema = `
+PREFIX s: <http://schema.org/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
-		// Send messages with prcltr.send(id, message)
-		// This will echo the received message back to the sender.
-		prcltr.send(source, message)
-	}
-)
+start = @_:person
+
+_:person {
+		a [s:Person];
+		s:name xsd:string;
+		s:birthDate xsd:date;
+    s:knows (IRI | @_:person)*
+}
+`
+
+function handler(peer, store, result, next) {
+	prcltr.send(peer, {})
+}
+
+prcltr.use(Shape([{ schema, handler }]))
 
 prcltr.start(() => console.log("hooray!"))
 ```
