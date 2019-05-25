@@ -1,3 +1,6 @@
+examples/echo/alpha
+examples/echo/beta
+
 # Logs
 logs
 *.log

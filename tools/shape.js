@@ -12,8 +12,8 @@ const ShExCore = require("../shex.js/packages/shex-core")
  *
  * @callback handler
  * @param {string} peer - The sender's 58-encoded PeerId
- * @param {N3.Store} store - The sender's 58-encoded PeerId
- * @param {next} next - The sender's 58-encoded PeerId
+ * @param {N3.Store} store
+ * @param {next} next
  */
 
 /**

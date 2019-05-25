@@ -11,7 +11,8 @@ type Next = () => void
 type Handler = (peer: string, store: N3Store, next: Next) => void
 
 declare class Percolator {
-	static protocol: string
+	public static protocol: string
+
 	private static matchProtocol(
 		protocol: string,
 		sourceProtocol: string,

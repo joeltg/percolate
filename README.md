@@ -21,10 +21,10 @@ PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 start = @_:person
 
 _:person {
-		a [s:Person];
-		s:name xsd:string;
-		s:birthDate xsd:date;
-    s:knows (IRI | @_:person)*
+	a [s:Person];
+	s:name xsd:string;
+	s:birthDate xsd:date;
+  s:knows (IRI | @_:person)*
 }
 `
 

@@ -1,6 +1,4 @@
 const { N3 } = require("../shex.js")
-const ShExParser = require("../shex.js/packages/shex-parser")
-const ShExCore = require("../shex.js/packages/shex-core")
 
 const jsonld = require("jsonld")
 const cbor = require("cbor")
@@ -8,6 +6,7 @@ const cbor = require("cbor")
 const pull = require("pull-stream/pull")
 const Pushable = require("pull-pushable")
 const drain = require("pull-stream/sinks/drain")
+const map = require("pull-stream/throughs/map")
 const asyncMap = require("pull-stream/throughs/async-map")
 const { transform } = require("stream-to-pull-stream")
 
@@ -18,14 +17,13 @@ const libp2p = require("./libp2p.js")
 
 const { PeerId } = IPFS
 
+// Underlay Protocol String
+const protocol = "/ul/0.1.1/cbor-ld"
+
 class Percolator {
-	// Underlay Protocol String
-	static protocol = "/ul/0.1.1/cbor-ld"
 	static matchProtocol(protocol, sourceProtocol, callback) {
 		callback(null, protocol === sourceProtocol)
 	}
-
-	static ShExParser = ShExParser.construct()
 
 	static canonize(data, callback) {
 		jsonld.canonize(
@@ -61,21 +59,14 @@ class Percolator {
 			libp2p: libp2p,
 		})
 
-		this.libp2p = this.ipfs.libp2p
-
-		this.ipfs.on("ready", () => {
-			this.libp2p.on("peer:connect", this.handlePeerConnect)
-			this.libp2p.handle(
-				Percolator.protocol,
-				this.handleProtocol,
-				Percolator.matchProtocol
-			)
+		this.ready = new Promise((resolve, reject) => {
+			this.ipfs.on("ready", resolve)
 		})
 	}
 
 	handlePeerConnect(peerInfo) {
 		if (peerInfo.protocols.has(protocol)) {
-			this.libp2p.dialProtocol(peerInfo, protocol, (err, connection) => {
+			this.ipfs.libp2p.dialProtocol(peerInfo, protocol, (err, connection) => {
 				if (err) {
 					console.error(err)
 				} else {
@@ -98,7 +89,6 @@ class Percolator {
 	connect(peerInfo, connection) {
 		const peer = peerInfo.id.toB58String()
 		this.outbox[peer] = Pushable()
-
 		pull(
 			this.outbox[peer],
 			transform(new cbor.Encoder()),
@@ -118,36 +108,69 @@ class Percolator {
 		}
 	}
 
+	/**
+	 * Invoke the next handler in the stack.
+	 *
+	 * @callback next
+	 */
+
+	/**
+	 *
+	 * @callback {handler}
+	 * @param {string} peer - The sender's 58-encoded PeerId
+	 * @param {N3.Store} store
+	 * @param {next} next
+	 */
+
+	/**
+	 *
+	 * @param {handler} handler
+	 */
 	use(handler) {
 		this.handlers.push(handler)
 	}
 
-	shape(schema, start, handler) {
-		if (typeof schema === "string") {
-			schema = Percolator.ShExParser.parse(schema)
-		}
+	/**
+	 *
+	 * @callback {onStart}
+	 * @param {Error} err
+	 * @param {PeerId} identity
+	 */
 
-		if (handler === undefined) {
-			handler = start
-			start = schema.start
-		}
-
-		const validator = ShExCore.Validator.construct(schema)
-		this.handlers.push((peer, store, next) => {
-			const db = ShExCore.Util.makeN3DB(store)
-			const result = validator.validate(db, "_:b0", start)
-			if (result.type === "Failure") {
-				next()
-			} else if (result.type === "ShapeTest") {
-				handler(peer, store, next)
-			}
-		})
-	}
-
+	/**
+	 *
+	 * @param {onStart} callback
+	 */
 	start(callback) {
-		this.ipfs.start(callback)
+		this.ready.then(() =>
+			this.ipfs.start(err => {
+				if (err) {
+					callback(err)
+				} else {
+					this.ipfs.libp2p.on("peer:connect", peerInfo =>
+						this.handlePeerConnect(peerInfo)
+					)
+					this.ipfs.libp2p.handle(
+						protocol,
+						(protocol, connection) => this.handleProtocol(protocol, connection),
+						Percolator.matchProtocol
+					)
+					this.ipfs.id((err, identity) => {
+						if (identity) {
+							this.id = identity.id
+						}
+						callback(err, identity)
+					})
+				}
+			})
+		)
 	}
 
+	/**
+	 *
+	 * @param {string} peer - The sender's 58-encoded PeerId
+	 * @param {Object} message - a JSON-LD document
+	 */
 	send(peer, message) {
 		if (peer instanceof PeerId) {
 			peer = peer.toB58String()
