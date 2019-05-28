@@ -1,4 +1,7 @@
-const { N3 } = require("../shex.js")
+const EventEmitter = require("events")
+
+// const { N3 } = require("../shex.js")
+const N3 = require("N3")
 
 const jsonld = require("jsonld")
 const cbor = require("cbor")
@@ -6,7 +9,6 @@ const cbor = require("cbor")
 const pull = require("pull-stream/pull")
 const Pushable = require("pull-pushable")
 const drain = require("pull-stream/sinks/drain")
-const map = require("pull-stream/throughs/map")
 const asyncMap = require("pull-stream/throughs/async-map")
 const { transform } = require("stream-to-pull-stream")
 
@@ -15,12 +17,12 @@ const IPFS = require("ipfs")
 const config = require("./config.js")
 const libp2p = require("./libp2p.js")
 
-const { PeerId } = IPFS
+const { Buffer, PeerId } = IPFS
 
 // Underlay Protocol String
 const protocol = "/ul/0.1.1/cbor-ld"
 
-class Percolator {
+class Percolator extends EventEmitter {
 	static matchProtocol(protocol, sourceProtocol, callback) {
 		callback(null, protocol === sourceProtocol)
 	}
@@ -33,13 +35,13 @@ class Percolator {
 		)
 	}
 
-	static parse(data, callback) {
+	static parse([data, hash, size], callback) {
 		const store = new N3.Store()
 		const parser = new N3.StreamParser({
 			format: "application/n-quads",
 			blankNodePrefix: "_:",
 		})
-		parser.on("end", () => callback(null, store))
+		parser.on("end", () => callback(null, [store, hash, size]))
 		parser.on("error", err => callback(err))
 		parser.on("data", quad => store.addQuad(quad))
 		parser.end(data)
@@ -66,10 +68,12 @@ class Percolator {
 
 	handlePeerConnect(peerInfo) {
 		if (peerInfo.protocols.has(protocol)) {
+			console.log(this.id, "handlePeerConnect", peerInfo.id.toB58String())
 			this.ipfs.libp2p.dialProtocol(peerInfo, protocol, (err, connection) => {
 				if (err) {
 					console.error(err)
 				} else {
+					console.log(this.id, "dialedProtocol", peerInfo.id.toB58String())
 					this.connect(peerInfo, connection)
 				}
 			})
@@ -81,6 +85,7 @@ class Percolator {
 			if (err) {
 				console.error(err)
 			} else {
+				console.log(this.id, "handleProtocol", peerInfo.id.toB58String())
 				this.connect(peerInfo, connection)
 			}
 		})
@@ -96,8 +101,19 @@ class Percolator {
 			transform(new cbor.Decoder()),
 			asyncMap(Percolator.canonize),
 			asyncMap(Percolator.parse),
-			drain(store => this.next(peer, store, 0), () => {})
+			drain(([store, hash, size]) => this.next(peer, store, 0), () => {})
 		)
+	}
+
+	persist(data, callback) {
+		this.ipfs.add(Buffer.from(data), { pin: false }, (err, res) => {
+			if (err) {
+				callback(err)
+			} else {
+				const [{ hash, size }] = res
+				callback(null, [data, hash, size])
+			}
+		})
 	}
 
 	next(peer, store, index) {

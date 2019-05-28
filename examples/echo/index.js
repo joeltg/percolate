@@ -1,4 +1,5 @@
 const path = require("path")
+const fs = require("fs-extra")
 const jsonld = require("jsonld")
 const N3 = require("N3")
 
@@ -10,7 +11,14 @@ const message = {
 	smokingAllowed: true,
 }
 
-const alpha = new Percolator(path.resolve(__dirname, "alpha"), true, {
+const alphaPath = path.resolve(__dirname, "alpha")
+const betaPath = path.resolve(__dirname, "beta")
+
+// Remove repos if they exist
+fs.removeSync(alphaPath)
+fs.removeSync(betaPath)
+
+const alpha = new Percolator(alphaPath, true, {
 	Addresses: {
 		Swarm: ["/ip4/127.0.0.1/tcp/4002"],
 		API: "/ip4/127.0.0.1/tcp/5002",
@@ -39,7 +47,7 @@ alpha.start((err, identity) => {
 
 	console.log("alpha:", identity.id)
 
-	const beta = new Percolator(path.resolve(__dirname, "beta"), true, {
+	const beta = new Percolator(betaPath, true, {
 		Addresses: {
 			Swarm: ["/ip4/127.0.0.1/tcp/4003"],
 			API: "/ip4/127.0.0.1/tcp/5003",

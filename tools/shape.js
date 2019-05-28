@@ -1,3 +1,4 @@
+const N3 = require("n3")
 const ShExParser = require("../shex.js/packages/shex-parser")
 const ShExCore = require("../shex.js/packages/shex-core")
 
@@ -13,6 +14,7 @@ const ShExCore = require("../shex.js/packages/shex-core")
  * @callback handler
  * @param {string} peer - The sender's 58-encoded PeerId
  * @param {N3.Store} store
+ * @param {Array} results
  * @param {next} next
  */
 
@@ -37,21 +39,23 @@ function Shape(routes) {
 
 	return (peer, store, next) => {
 		const db = ShExCore.Util.makeN3DB(store)
-		const route = routes.find(({ validator, start }) => {
-			const result = validator.validate(db, "_:b0", start)
-			if (result.type === "Failure") {
-				return false
-			} else if (result.type === "ShapeTest") {
-				return true
-			} else {
-				// are there more options?
+		const results = []
+		for (const { validator, start, handler } of routes) {
+			store.forSubjects(subject => {
+				const id = N3.DataFactory.internal.toId(subject)
+				const result = validator.validate(db, id, start)
+				if (result.type === "ShapeTest") {
+					results.push(result)
+				} else if (result.type === "Failure") {
+					// nothing
+				}
+			})
+			if (subjects.length > 0) {
+				handler(peer, store, results, next)
+				return
 			}
-		})
-		if (route) {
-			route.handler(peer, store, next)
-		} else {
-			next()
 		}
+		next()
 	}
 }
 
