@@ -29,6 +29,7 @@ const alpha = new Percolator(alphaPath, true, {
 })
 
 alpha.use((peer, store, next) => {
+	console.log("alpha received message")
 	const writer = new N3.Writer({ format: "N-Quads" })
 	store.forEach(quad => writer.addQuad(quad))
 	writer.end((err, result) => {
@@ -58,6 +59,7 @@ alpha.start((err, identity) => {
 	})
 
 	beta.use((peer, store, next) => {
+		console.log("beta received message")
 		const writer = new N3.Writer({ format: "N-Quads" })
 		store.forEach(quad => writer.addQuad(quad))
 		writer.end((err, result) => {
@@ -73,8 +75,10 @@ alpha.start((err, identity) => {
 			console.error(err)
 		} else {
 			console.log("beta:", identity.id)
+			setTimeout(() => {
+				console.log("sending message from alpha to beta")
+				alpha.send(identity.id, message)
+			}, 3000)
 		}
 	})
-
-	setTimeout(() => beta.send(identity.id, message), 3000)
 })

@@ -1,7 +1,7 @@
 const EventEmitter = require("events")
 
-// const { N3 } = require("../shex.js")
-const N3 = require("N3")
+const { N3 } = require("../shex.js")
+// const N3 = require("N3")
 
 const jsonld = require("jsonld")
 const cbor = require("cbor")
@@ -48,6 +48,7 @@ class Percolator extends EventEmitter {
 	}
 
 	constructor(repo, init, userConfig) {
+		super()
 		this.outbox = {}
 		this.handlers = []
 
@@ -100,6 +101,7 @@ class Percolator extends EventEmitter {
 			connection,
 			transform(new cbor.Decoder()),
 			asyncMap(Percolator.canonize),
+			asyncMap(this.persist.bind(this)),
 			asyncMap(Percolator.parse),
 			drain(([store, hash, size]) => this.next(peer, store, 0), () => {})
 		)
