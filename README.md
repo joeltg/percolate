@@ -6,4 +6,4 @@ It's a minimal [Underlay](https://underlay.mit.edu/) node that exposes a simple 
 
 It's built on [IPFS](https://github.com/ipfs/js-ipfs) and [libp2p](https://github.com/libp2p/js-libp2p), and uses [PeerId](https://github.com/libp2p/js-peer-id) for identifiers.
 
-Check out the example in [examples/echo/](examples/echo/index.js).
+Check out the [examples](examples/).
