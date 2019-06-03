@@ -1,5 +1,5 @@
-examples/echo/alpha
-examples/echo/beta
+examples/*/alpha
+examples/*/beta
 
 # Logs
 logs

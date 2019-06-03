@@ -1,6 +1,6 @@
 const N3 = require("n3")
-const ShExParser = require("../shex.js/packages/shex-parser")
-const ShExCore = require("../shex.js/packages/shex-core")
+const ShExParser = require("../../shex.js/packages/shex-parser")
+const ShExCore = require("../../shex.js/packages/shex-core")
 
 /**
  * Invoke the next handler in the stack.
@@ -30,17 +30,18 @@ function Shape(routes) {
 			route.schema = parser.parse(schema)
 		}
 
-		if (start === undefined) {
-			route.start = schema.start
+		if (start === undefined || start === null) {
+			route.start = route.schema.start
 		}
 
-		route.validator = ShExCore.Validator.construct(schema)
+		route.validator = ShExCore.Validator.construct(route.schema)
 	})
 
 	return (peer, store, next) => {
 		const db = ShExCore.Util.makeN3DB(store)
-		const results = []
-		for (const { validator, start, handler } of routes) {
+		for (const { schema, start, handler } of routes) {
+			const results = []
+			const validator = ShExCore.Validator.construct(schema)
 			store.forSubjects(subject => {
 				const id = N3.DataFactory.internal.toId(subject)
 				const result = validator.validate(db, id, start)
@@ -50,7 +51,7 @@ function Shape(routes) {
 					// nothing
 				}
 			})
-			if (subjects.length > 0) {
+			if (results.length > 0) {
 				handler(peer, store, results, next)
 				return
 			}

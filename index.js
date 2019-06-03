@@ -103,7 +103,7 @@ class Percolator extends EventEmitter {
 			asyncMap(Percolator.canonize),
 			asyncMap(this.persist.bind(this)),
 			asyncMap(Percolator.parse),
-			drain(([store, hash, size]) => this.next(peer, store, 0), () => {})
+			drain(message => this.next(peer, message, 0), () => {})
 		)
 	}
 
@@ -118,10 +118,11 @@ class Percolator extends EventEmitter {
 		})
 	}
 
-	next(peer, store, index) {
+	next(peer, message, index) {
 		if (index < this.handlers.length) {
 			const handler = this.handlers[index]
-			const next = () => this.next(peer, store, index + 1)
+			const next = () => this.next(peer, message, index + 1)
+			const [store, hash, size] = message
 			handler(peer, store, next)
 		}
 	}
