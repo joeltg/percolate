@@ -1,0 +1,10 @@
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX schema: <http://schema.org/>
+
+start = @_:volcano
+
+_:volcano CLOSED {
+	a [schema:Volcano];
+	schema:smokingAllowed xsd:boolean;
+	schema:name xsd:string;
+}
