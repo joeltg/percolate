@@ -1,7 +1,7 @@
 const EventEmitter = require("events")
 
 const { N3 } = require("../shex.js")
-// const N3 = require("N3")
+// const N3 = require("n3")
 
 const jsonld = require("jsonld")
 const cbor = require("cbor")

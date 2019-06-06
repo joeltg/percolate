@@ -20,26 +20,26 @@ const ShExCore = require("../../shex.js/packages/shex-core")
 
 /**
  *
- * @param {{schema: string, start: string, handler: handler}[]} routes
+ * @param {{schema: string, start: string, handler: handler}[]} shapes
  */
-function Shape(routes) {
+function Shape(shapes) {
 	const parser = ShExParser.construct()
-	routes.forEach(route => {
-		const { schema, start } = route
+	shapes.forEach(shape => {
+		const { schema, start } = shape
 		if (typeof schema === "string") {
-			route.schema = parser.parse(schema)
+			shape.schema = parser.parse(schema)
 		}
 
 		if (start === undefined || start === null) {
-			route.start = route.schema.start
+			shape.start = shape.schema.start
 		}
 
-		route.validator = ShExCore.Validator.construct(route.schema)
+		shape.validator = ShExCore.Validator.construct(shape.schema)
 	})
 
 	return (peer, store, next) => {
 		const db = ShExCore.Util.makeN3DB(store)
-		for (const { schema, start, handler } of routes) {
+		for (const { schema, start, handler } of shapes) {
 			const results = []
 			const validator = ShExCore.Validator.construct(schema)
 			store.forSubjects(subject => {
