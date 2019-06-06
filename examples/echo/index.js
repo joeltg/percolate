@@ -1,7 +1,5 @@
 const path = require("path")
 const fs = require("fs-extra")
-const jsonld = require("jsonld")
-const N3 = require("N3")
 
 const Percolator = require("../../index.js")
 const fromStore = require("../../tools/fromStore.js")
