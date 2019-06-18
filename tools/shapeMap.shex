@@ -1,0 +1,11 @@
+PREFIX ul: <http://underlay.mit.edu/ns#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+start = @_:shape
+
+_:shape CLOSED {
+  a [ul:ShapeMap];
+  ul:node bnode;
+  ul:graph bnode;
+	ul:shape iri;
+}

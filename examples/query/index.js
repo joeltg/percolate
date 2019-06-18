@@ -3,16 +3,24 @@ const fs = require("fs-extra")
 
 const Percolator = require("../../index.js")
 const fromStore = require("../../tools/fromStore.js")
-const Shape = require("../../tools/shape.js")
+
+const Query = require("../../tools/query.js")
+
+const volcanoQuerySchemaPath = path.resolve(__dirname, "volcanoQuery.shex")
+const volcanoQuerySchema = fs.readFileSync(volcanoQuerySchemaPath, "utf-8")
 
 const message = {
-	"@context": { "@vocab": "http://schema.org/" },
-	"@type": "Volcano",
-	smokingAllowed: true,
-	name: "Mount Fuji",
+	"@context": {
+		"@vocab": "http://schema.org/",
+		ul: "http://underlay.mit.edu/ns#",
+	},
+	"@type": "ul:Query",
+	"@graph": {
+		"@type": "Volcano",
+		name: {},
+		smokingAllowed: {},
+	},
 }
-
-const schema = fs.readFileSync(path.resolve(__dirname, "volcano.shex"), "utf-8")
 
 const alphaPath = path.resolve(__dirname, "alpha")
 const betaPath = path.resolve(__dirname, "beta")
@@ -31,7 +39,7 @@ const alpha = new Percolator(alphaPath, true, {
 	Bootstrap: [],
 })
 
-alpha.use((peer, { store }, next) => {
+alpha.use((peer, { store, graphs, hash, size }, next) => {
 	console.log("alpha: received message from", peer)
 	fromStore(store, (err, doc) => {
 		if (err) {
@@ -60,53 +68,29 @@ alpha.start((err, identity) => {
 		Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${identity.id}`],
 	})
 
-	function handler(peer, { store, results }, next) {
-		console.log("beta: received a volcano from", peer)
-		const [
+	beta.use(
+		Query([
 			{
-				node,
-				solution: {
-					solutions: [{ expressions }],
+				schema: volcanoQuerySchema,
+				handler(peer, message, next) {
+					console.log(
+						"wow man",
+						peer,
+						message,
+						JSON.stringify(message.queryResults)
+					)
 				},
 			},
-		] = results
-
-		const {
-			solutions: [
-				{
-					object: { value: smokingAllowed },
-				},
-			],
-		} = expressions.find(
-			({ predicate }) => predicate === "http://schema.org/smokingAllowed"
-		)
-
-		const {
-			solutions: [
-				{
-					object: { value: name },
-				},
-			],
-		} = expressions.find(
-			({ predicate }) => predicate === "http://schema.org/name"
-		)
-
-		console.log(
-			`got volcano ${node} with name ${name}. Smoking ${
-				smokingAllowed === "true" ? "is" : "is NOT"
-			} allowed.`
-		)
-	}
-
-	beta.use(Shape([{ schema, handler }]))
+		])
+	)
 
 	beta.use((peer, { store, graphs, hash, size }, next) => {
-		console.log("beta: received a non-volcano from peer", peer)
+		console.log("beta: received a non-volcano-query from peer", peer)
 		fromStore(store, (err, doc) => {
 			if (err) {
 				console.error(err)
 			} else {
-				console.log("beta: echoing non-volcano back to sender")
+				console.log("beta: echoing non-volcano-query back to sender")
 				beta.send(peer, doc)
 			}
 		})
@@ -118,7 +102,7 @@ alpha.start((err, identity) => {
 		} else {
 			console.log("beta:", identity.id)
 			setTimeout(() => {
-				console.log("sending message from alpha to beta")
+				console.log("sending messages from alpha to beta")
 				alpha.send(identity.id, message)
 				alpha.send(identity.id, { "http://foo.bar": "BAZ" })
 			}, 3000)

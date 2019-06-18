@@ -27,7 +27,7 @@ const alpha = new Percolator(alphaPath, true, {
 	Bootstrap: [],
 })
 
-alpha.use((peer, store, next) => {
+alpha.use((peer, { store, graphs, hash, size }, next) => {
 	console.log("alpha: received echo from", peer)
 	fromStore(store, (err, doc) => {
 		if (err) {
@@ -56,7 +56,7 @@ alpha.start((err, identity) => {
 		Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${identity.id}`],
 	})
 
-	beta.use((peer, store, next) => {
+	beta.use((peer, { store, graphs, hash, size }, next) => {
 		console.log("beta: received message from", peer)
 		fromStore(store, (err, doc) => {
 			if (err) {

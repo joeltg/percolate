@@ -1,6 +1,7 @@
-const N3 = require("n3")
-const ShExParser = require("../../shex.js/packages/shex-parser")
-const ShExCore = require("../../shex.js/packages/shex-core")
+// const N3 = require("n3")
+const ShExParser = require("furk/packages/shex-parser")
+const ShExCore = require("furk/packages/shex-core")
+const { N3 } = require("furk")
 
 /**
  * Invoke the next handler in the stack.
@@ -13,8 +14,12 @@ const ShExCore = require("../../shex.js/packages/shex-core")
  *
  * @callback handler
  * @param {string} peer - The sender's 58-encoded PeerId
- * @param {N3.Store} store
- * @param {Array} results
+ * @param {Object} message
+ * @param {N3.Store} message.store
+ * @param {Object.<string, N3.Store>} message.graphs
+ * @param {string} message.hash
+ * @param {number} message.size
+ * @param {Array.<Object>} message.results
  * @param {next} next
  */
 
@@ -24,39 +29,42 @@ const ShExCore = require("../../shex.js/packages/shex-core")
  */
 function Shape(shapes) {
 	const parser = ShExParser.construct()
-	shapes.forEach(shape => {
-		const { schema, start } = shape
-		if (typeof schema === "string") {
-			shape.schema = parser.parse(schema)
+	for (const shape of shapes) {
+		if (typeof shape.schema === "string") {
+			shape.schema = parser.parse(shape.schema)
 		}
 
-		if (start === undefined || start === null) {
+		if (shape.start === undefined || shape.start === null) {
 			shape.start = shape.schema.start
 		}
+	}
 
-		shape.validator = ShExCore.Validator.construct(shape.schema)
-	})
-
-	return (peer, store, next) => {
-		const db = ShExCore.Util.makeN3DB(store)
-		for (const { schema, start, handler } of shapes) {
+	function tick(peer, message, next, index) {
+		for (let i = index; i < shapes.length; i++) {
+			const { schema, start, handler } = shapes[i]
 			const results = []
 			const validator = ShExCore.Validator.construct(schema)
-			store.forSubjects(subject => {
+			message.defaultStore.forSubjects(subject => {
 				const id = N3.DataFactory.internal.toId(subject)
-				const result = validator.validate(db, id, start)
+				const result = validator.validate(message.defaultDB, id, start)
 				if (result.type === "ShapeTest") {
 					results.push(result)
-				} else if (result.type === "Failure") {
-					// nothing
 				}
 			})
+
 			if (results.length > 0) {
-				handler(peer, store, results, next)
+				message.results = results
+				handler(peer, message, () => tick(peer, message, next, i + 1))
 				return
 			}
 		}
 		next()
+	}
+
+	return (peer, message, next) => {
+		message.defaultStore = message.graphs[""]
+		message.defaultDB = ShExCore.Util.makeN3DB(message.defaultStore)
+		return tick(peer, message, next, 0)
 	}
 }
 

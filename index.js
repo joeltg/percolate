@@ -1,7 +1,6 @@
 const EventEmitter = require("events")
 
-const { N3 } = require("../shex.js")
-// const N3 = require("n3")
+const { N3 } = require("furk")
 
 const jsonld = require("jsonld")
 const cbor = require("cbor")
@@ -20,7 +19,7 @@ const libp2p = require("./libp2p.js")
 const { Buffer, PeerId } = IPFS
 
 // Underlay Protocol String
-const protocol = "/ul/0.1.1/cbor-ld"
+const Protocol = "/x/ul/0.1.1/cbor-ld"
 
 class Percolator extends EventEmitter {
 	static matchProtocol(protocol, sourceProtocol, callback) {
@@ -35,15 +34,25 @@ class Percolator extends EventEmitter {
 		)
 	}
 
-	static parse([data, hash, size], callback) {
+	static parse({ data, hash, size }, callback) {
 		const store = new N3.Store()
 		const parser = new N3.StreamParser({
 			format: "application/n-quads",
 			blankNodePrefix: "_:",
 		})
-		parser.on("end", () => callback(null, [store, hash, size]))
+
 		parser.on("error", err => callback(err))
 		parser.on("data", quad => store.addQuad(quad))
+		parser.on("end", () => {
+			const graphs = {}
+			store.forGraphs(graph => {
+				const id = N3.DataFactory.internal.toId(graph)
+				graphs[id] = new N3.Store()
+				store.forEach(quad => graphs[id].addQuad(quad), null, null, null, graph)
+			})
+			callback(null, { store, graphs, hash, size })
+		})
+
 		parser.end(data)
 	}
 
@@ -68,9 +77,9 @@ class Percolator extends EventEmitter {
 	}
 
 	handlePeerConnect(peerInfo) {
-		if (peerInfo.protocols.has(protocol)) {
+		if (peerInfo.protocols.has(Protocol)) {
 			console.log(this.id, "handlePeerConnect", peerInfo.id.toB58String())
-			this.ipfs.libp2p.dialProtocol(peerInfo, protocol, (err, connection) => {
+			this.ipfs.libp2p.dialProtocol(peerInfo, Protocol, (err, connection) => {
 				if (err) {
 					console.error(err)
 				} else {
@@ -103,7 +112,7 @@ class Percolator extends EventEmitter {
 			asyncMap(Percolator.canonize),
 			asyncMap(this.persist.bind(this)),
 			asyncMap(Percolator.parse),
-			drain(message => this.next(peer, message, 0), () => {})
+			drain(message => this.tick(peer, message, 0), () => {})
 		)
 	}
 
@@ -113,17 +122,16 @@ class Percolator extends EventEmitter {
 				callback(err)
 			} else {
 				const [{ hash, size }] = res
-				callback(null, [data, hash, size])
+				callback(null, { data, hash, size })
 			}
 		})
 	}
 
-	next(peer, message, index) {
+	tick(peer, message, index) {
 		if (index < this.handlers.length) {
 			const handler = this.handlers[index]
-			const next = () => this.next(peer, message, index + 1)
-			const [store, hash, size] = message
-			handler(peer, store, next)
+			const next = () => this.tick(peer, message, index + 1)
+			handler(peer, message, next)
 		}
 	}
 
@@ -136,8 +144,12 @@ class Percolator extends EventEmitter {
 	/**
 	 *
 	 * @callback {handler}
-	 * @param {string} peer - The sender's 58-encoded PeerId
-	 * @param {N3.Store} store
+	 * @param {string} peer - The sender's base58-encoded PeerId
+	 * @param {Object} message
+	 * @param {N3.Store} message.store
+	 * @param {Object.<string, N3.Store>} message.graphs
+	 * @param {string} message.hash
+	 * @param {number} message.size
 	 * @param {next} next
 	 */
 
@@ -170,7 +182,7 @@ class Percolator extends EventEmitter {
 						this.handlePeerConnect(peerInfo)
 					)
 					this.ipfs.libp2p.handle(
-						protocol,
+						Protocol,
 						(protocol, connection) => this.handleProtocol(protocol, connection),
 						Percolator.matchProtocol
 					)
@@ -187,7 +199,7 @@ class Percolator extends EventEmitter {
 
 	/**
 	 *
-	 * @param {string} peer - The sender's 58-encoded PeerId
+	 * @param {string} peer - The sender's base58-encoded PeerId
 	 * @param {Object} message - a JSON-LD document
 	 */
 	send(peer, message) {

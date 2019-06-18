@@ -1,0 +1,8 @@
+PREFIX ul: <http://underlay.mit.edu/ns#>
+
+start = @_:query
+
+_:query CLOSED {
+	a [ul:Query];
+  ul:index bnode*;
+}

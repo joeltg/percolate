@@ -14,7 +14,7 @@ const message = {
 	name: "Mount Fuji",
 }
 
-const schema = fs.readFileSync(path.resolve(__dirname, "Volcano.shex"), "utf-8")
+const schema = fs.readFileSync(path.resolve(__dirname, "volcano.shex"), "utf-8")
 
 const alphaPath = path.resolve(__dirname, "alpha")
 const betaPath = path.resolve(__dirname, "beta")
@@ -33,7 +33,7 @@ const alpha = new Percolator(alphaPath, true, {
 	Bootstrap: [],
 })
 
-alpha.use((peer, store, next) => {
+alpha.use((peer, { store, graphs, hash, size }, next) => {
 	console.log("alpha: received message from", peer)
 	fromStore(store, (err, doc) => {
 		if (err) {
@@ -64,7 +64,7 @@ alpha.start((err, identity) => {
 
 	beta.use(Route([{ schema, url: "http://localhost:6000/wow" }]))
 
-	beta.use((peer, store, next) => {
+	beta.use((peer, { store, graphs, hash, size }, next) => {
 		console.log("beta: received a non-volcano from peer", peer)
 		fromStore(store, (err, doc) => {
 			if (err) {

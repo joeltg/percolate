@@ -20,6 +20,7 @@
 	"dependencies": {
 		"cbor": "^4.1.5",
 		"fs-extra": "^8.0.1",
+		"furk": "github:shexSpec/shex.js",
 		"ipfs": "^0.36.3",
 		"jsonld": "^1.6.2",
 		"libp2p-bootstrap": "^0.9.7",
@@ -31,7 +32,6 @@
 		"node-fetch": "^2.6.0",
 		"pull-pushable": "^2.2.0",
 		"pull-stream": "^3.6.12",
-		"shex": "^0.9.2",
 		"stream-to-pull-stream": "^1.7.3"
 	}
 }

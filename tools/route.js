@@ -10,29 +10,22 @@ const fetchOptions = {
 	},
 }
 
+const encodeNode = ({ node }) => `node=${encodeURIComponent(node)}`
+
 const makeShape = ({ schema, start, url }) => ({
 	schema,
 	start,
-	handler: (peer, store, results, next) =>
+	handler: (peer, { store, results }, next) =>
 		fromStore(store, (err, doc) => {
 			if (err) {
 				console.error(err)
 			} else {
-				const nodes = results.map(
-					({ node }) => `node=${encodeURIComponent(node)}`
-				)
+				const nodes = results.map(encodeNode)
 				const query = `peer=${peer}&${nodes.join("&")}`
-				fetch(url + "?" + query, {
-					...fetchOptions,
-					body: JSON.stringify(doc),
-				})
-					.then(res => {
-						if (res.ok) {
-							// great!
-						} else {
-							next()
-						}
-					})
+				const body = JSON.stringify(doc)
+				const options = { ...fetchOptions, body }
+				fetch(`${url}?${query}`, options)
+					.then(res => res.ok || next())
 					.catch(err => console.error(err))
 			}
 		}),
