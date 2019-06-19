@@ -1,4 +1,3 @@
-// const N3 = require("n3")
 const ShExParser = require("furk/packages/shex-parser")
 const ShExCore = require("furk/packages/shex-core")
 const { N3 } = require("furk")
