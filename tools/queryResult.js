@@ -10,7 +10,6 @@ const underlayTest = /^ul:\/ipfs\/[a-zA-Z0-9]{46}#_:c14n\d+$/
  */
 
 /**
- * Callback for adding two numbers.
  *
  * @callback handler
  * @param {string} peer - The sender's 58-encoded PeerId
@@ -42,7 +41,6 @@ function QueryResult(handler) {
 		)
 
 		if (Object.keys(results).length > 0) {
-			// yay
 			message.queryResults = results
 			handler(peer, message, next)
 		} else {

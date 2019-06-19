@@ -74,6 +74,8 @@ class Percolator extends EventEmitter {
 		this.ready = new Promise((resolve, reject) => {
 			this.ipfs.on("ready", resolve)
 		})
+
+		this.persist = this.persist.bind(this)
 	}
 
 	handlePeerConnect(peerInfo) {
@@ -110,7 +112,7 @@ class Percolator extends EventEmitter {
 			connection,
 			transform(new cbor.Decoder()),
 			asyncMap(Percolator.canonize),
-			asyncMap(this.persist.bind(this)),
+			asyncMap(this.persist),
 			asyncMap(Percolator.parse),
 			drain(message => this.tick(peer, message, 0), () => {})
 		)

@@ -9,7 +9,6 @@ const { N3 } = require("furk")
  */
 
 /**
- * Callback for adding two numbers.
  *
  * @callback handler
  * @param {string} peer - The sender's 58-encoded PeerId

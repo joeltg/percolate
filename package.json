@@ -1,34 +1,32 @@
 {
 	"name": "percolate",
-	"version": "0.1.0",
-	"description": "",
+	"version": "0.2.0",
+	"description": "Express for the decentralized semantic web",
 	"main": "index.js",
 	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1",
-		"make-node": ""
+		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/joeltg/percolate.git"
+		"url": "git+https://github.com/underlay/percolate.git"
 	},
 	"author": "Joel Gustafson",
 	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/joeltg/percolate/issues"
+		"url": "https://github.com/underlay/percolate/issues"
 	},
-	"homepage": "https://github.com/joeltg/percolate#readme",
+	"homepage": "https://github.com/underlay/percolate#readme",
 	"dependencies": {
 		"cbor": "^4.1.5",
 		"fs-extra": "^8.0.1",
 		"furk": "github:shexSpec/shex.js",
-		"ipfs": "^0.36.3",
+		"ipfs": "^0.36.4",
 		"jsonld": "^1.6.2",
 		"libp2p-bootstrap": "^0.9.7",
 		"libp2p-kad-dht": "^0.15.2",
 		"libp2p-mplex": "^0.8.5",
 		"libp2p-secio": "^0.11.1",
 		"libp2p-tcp": "^0.13.0",
-		"n3": "^1.1.1",
 		"node-fetch": "^2.6.0",
 		"pull-pushable": "^2.2.0",
 		"pull-stream": "^3.6.12",

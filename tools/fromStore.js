@@ -1,5 +1,4 @@
 const jsonld = require("jsonld")
-// const N3 = require("n3")
 const { N3 } = require("furk")
 
 function fromStore(store, callback) {
