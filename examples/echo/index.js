@@ -1,8 +1,17 @@
+/**
+ * This example creates two parallel Underlay nodes, alpha and beta.
+ * Alpha has no bootstrap peers and uses a handler that logs every message to the console.
+ * Beta has alpha as a bootstrap peer and uses a handler that echoes every message back to its sender.
+ * After both nodes are initialized, alpha sends a message to beta.
+ */
+
 const path = require("path")
 const fs = require("fs-extra")
 
 const Percolator = require("../../index.js")
-const fromStore = require("../../tools/fromStore.js")
+const log = require("../../tools/log.js")
+const { fromStore } = require("../../utils.js")
+const { protocol } = require("../../protocols/cbor-ld.js")
 
 const message = {
 	"@context": { "@vocab": "http://schema.org/" },
@@ -27,24 +36,15 @@ const alpha = new Percolator(alphaPath, true, {
 	Bootstrap: [],
 })
 
-alpha.use((peer, { store, graphs, hash, size }, next) => {
-	console.log("alpha: received echo from", peer)
-	fromStore(store, (err, doc) => {
-		if (err) {
-			console.error(err)
-		} else {
-			console.log(doc)
-		}
-	})
-})
+alpha.use(log)
 
-alpha.start((err, identity) => {
+alpha.start((err, { id: alphaId }) => {
 	if (err) {
 		console.error(err)
 		return
 	}
 
-	console.log("alpha:", identity.id)
+	console.log("alpha:", alphaId)
 
 	const beta = new Percolator(betaPath, true, {
 		Addresses: {
@@ -53,30 +53,30 @@ alpha.start((err, identity) => {
 			Gateway: "/ip4/127.0.0.1/tcp/8082",
 		},
 
-		Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${identity.id}`],
+		Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${alphaId}`],
 	})
 
-	beta.use((peer, { store, graphs, hash, size }, next) => {
+	beta.use((peer, { store }, next) => {
 		console.log("beta: received message from", peer)
 		fromStore(store, (err, doc) => {
 			if (err) {
 				console.error(err)
 			} else {
 				console.log("beta: echoing back to sender")
-				beta.send(peer, doc)
+				beta.send(peer, protocol, doc)
 			}
 		})
 	})
 
-	beta.start((err, identity) => {
+	beta.start((err, { id: betaId }) => {
 		if (err) {
 			console.error(err)
 		} else {
-			console.log("beta:", identity.id)
+			console.log("beta:", betaId)
 			setTimeout(() => {
 				console.log("sending message from alpha to beta")
-				alpha.send(identity.id, message)
-			}, 3000)
+				alpha.send(betaId, protocol, message)
+			}, 2000)
 		}
 	})
 })

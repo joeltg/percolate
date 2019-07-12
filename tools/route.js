@@ -1,13 +1,11 @@
 const fetch = require("node-fetch")
 
 const Shape = require("./shape.js")
-const fromStore = require("./fromStore.js")
+const { fromStore } = require("../utils.js")
 
 const fetchOptions = {
 	method: "POST",
-	headers: {
-		"Content-Type": "application/ld+json",
-	},
+	headers: { "Content-Type": "application/ld+json" },
 }
 
 const encodeNode = ({ node }) => `node=${encodeURIComponent(node)}`
@@ -15,7 +13,7 @@ const encodeNode = ({ node }) => `node=${encodeURIComponent(node)}`
 const makeShape = ({ schema, start, url }) => ({
 	schema,
 	start,
-	handler: (peer, { store, results }, next) =>
+	handler(peer, { store, results }, next) {
 		fromStore(store, (err, doc) => {
 			if (err) {
 				console.error(err)
@@ -28,7 +26,8 @@ const makeShape = ({ schema, start, url }) => ({
 					.then(res => res.ok || next())
 					.catch(err => console.error(err))
 			}
-		}),
+		})
+	},
 })
 
 module.exports = routes => Shape(routes.map(makeShape))

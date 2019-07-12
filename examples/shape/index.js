@@ -1,9 +1,26 @@
+/**
+ * This example demonstrates the Shape middleware, uses shex.js to match messages whose
+ * default graphs validate the provided shape expression.
+ *
+ * This example creates two parallel Underlay nodes, alpha and beta.
+ * Alpha has no bootstrap peers and uses a handler that logs every message to the console.
+ * Beta has alpha as a bootstrap peer and has two message handlers.
+ * The first uses the Shape middleware to handle messages whose default graphs validate ./volcano.shex.
+ * The second - invoked after Shape if the message doesn't validate - echoes the message back to the sender.
+ * After both nodes are initialized, alpha sends two messages to beta.
+ * The first message validates ./volcano.shex.
+ * The second message does not.
+ */
+
 const path = require("path")
 const fs = require("fs-extra")
 
 const Percolator = require("../../index.js")
-const fromStore = require("../../tools/fromStore.js")
+const { fromStore } = require("../../utils.js")
+const log = require("../../tools/log.js")
 const Shape = require("../../tools/shape.js")
+
+const { protocol } = require("../../protocols/cbor-ld.js")
 
 const message = {
 	"@context": { "@vocab": "http://schema.org/" },
@@ -31,16 +48,7 @@ const alpha = new Percolator(alphaPath, true, {
 	Bootstrap: [],
 })
 
-alpha.use((peer, { store }, next) => {
-	console.log("alpha: received message from", peer)
-	fromStore(store, (err, doc) => {
-		if (err) {
-			console.error(err)
-		} else {
-			console.log(doc)
-		}
-	})
-})
+alpha.use(log)
 
 alpha.start((err, identity) => {
 	if (err) {
@@ -100,14 +108,14 @@ alpha.start((err, identity) => {
 
 	beta.use(Shape([{ schema, handler }]))
 
-	beta.use((peer, { store, graphs, hash, size }, next) => {
+	beta.use((peer, { store }, next) => {
 		console.log("beta: received a non-volcano from peer", peer)
 		fromStore(store, (err, doc) => {
 			if (err) {
 				console.error(err)
 			} else {
 				console.log("beta: echoing non-volcano back to sender")
-				beta.send(peer, doc)
+				beta.send(peer, protocol, doc)
 			}
 		})
 	})
@@ -119,9 +127,9 @@ alpha.start((err, identity) => {
 			console.log("beta:", identity.id)
 			setTimeout(() => {
 				console.log("sending message from alpha to beta")
-				alpha.send(identity.id, message)
-				alpha.send(identity.id, { "http://foo.bar": "BAZ" })
-			}, 3000)
+				alpha.send(identity.id, protocol, message)
+				alpha.send(identity.id, protocol, { "http://foo.bar": "BAZ" })
+			}, 2000)
 		}
 	})
 })

@@ -2,7 +2,7 @@ const fs = require("fs")
 const path = require("path")
 
 const Query = require("./shape.js")
-const fromStore = require("./fromStore.js")
+const { fromStore } = require("../utils.js")
 
 const shapeMapSchemaPath = path.resolve(__dirname, "query.shex")
 const shapeMapSchema = fs.readFileSync(shapeMapSchemaPath, "utf-8")

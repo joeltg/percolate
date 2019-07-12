@@ -1,10 +1,26 @@
+/**
+ * This example demonstrates the Query middleware, which matches messages whose default graphs
+ * validate a global "query" shape and whose corresponding query graphs validate the provided shape.
+ *
+ * This example creates two parallel Underlay nodes, alpha and beta.
+ * Alpha has no bootstrap peers and uses a handler that logs every message to the console.
+ * Beta has alpha as a bootstrap peer and has two message handlers.
+ * The first uses the Query middleware to handle messages with *query graphs* that validate ./volcanoQuery.shex.
+ * The second - invoked after the Query middleware if the message doesn't validate - echoes the message back to the sender.
+ * After both nodes are initialized, alpha sends two messages to beta.
+ * The first message is a valid query (whose query graph validates ./volcanoQuery.shex).
+ * The second message is not a valid query.
+ */
+
 const path = require("path")
 const fs = require("fs-extra")
 
 const Percolator = require("../../index.js")
-const fromStore = require("../../tools/fromStore.js")
-
+const log = require("../../tools/log.js")
 const Query = require("../../tools/query.js")
+const { fromStore } = require("../../utils.js")
+
+const { protocol } = require("../../protocols/cbor-ld.js")
 
 const volcanoQuerySchemaPath = path.resolve(__dirname, "volcanoQuery.shex")
 const volcanoQuerySchema = fs.readFileSync(volcanoQuerySchemaPath, "utf-8")
@@ -39,24 +55,15 @@ const alpha = new Percolator(alphaPath, true, {
 	Bootstrap: [],
 })
 
-alpha.use((peer, { store, graphs, hash, size }, next) => {
-	console.log("alpha: received message from", peer)
-	fromStore(store, (err, doc) => {
-		if (err) {
-			console.error(err)
-		} else {
-			console.log(doc)
-		}
-	})
-})
+alpha.use(log)
 
-alpha.start((err, identity) => {
+alpha.start((err, { id: alphaId }) => {
 	if (err) {
 		console.error(err)
 		return
 	}
 
-	console.log("alpha:", identity.id)
+	console.log("alpha:", alphaId)
 
 	const beta = new Percolator(betaPath, true, {
 		Addresses: {
@@ -65,7 +72,7 @@ alpha.start((err, identity) => {
 			Gateway: "/ip4/127.0.0.1/tcp/8082",
 		},
 
-		Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${identity.id}`],
+		Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${alphaId}`],
 	})
 
 	beta.use(
@@ -73,39 +80,34 @@ alpha.start((err, identity) => {
 			{
 				schema: volcanoQuerySchema,
 				handler(peer, message, next) {
-					console.log(
-						"wow man",
-						peer,
-						message,
-						JSON.stringify(message.queryResults)
-					)
+					console.log(peer, message, JSON.stringify(message.queryResults))
 				},
 			},
 		])
 	)
 
-	beta.use((peer, { store, graphs, hash, size }, next) => {
+	beta.use((peer, { store }, next) => {
 		console.log("beta: received a non-volcano-query from peer", peer)
 		fromStore(store, (err, doc) => {
 			if (err) {
 				console.error(err)
 			} else {
 				console.log("beta: echoing non-volcano-query back to sender")
-				beta.send(peer, doc)
+				beta.send(peer, protocol, doc)
 			}
 		})
 	})
 
-	beta.start((err, identity) => {
+	beta.start((err, { id: betaId }) => {
 		if (err) {
 			console.error(err)
 		} else {
-			console.log("beta:", identity.id)
+			console.log("beta:", betaId)
 			setTimeout(() => {
 				console.log("sending messages from alpha to beta")
-				alpha.send(identity.id, message)
-				alpha.send(identity.id, { "http://foo.bar": "BAZ" })
-			}, 3000)
+				alpha.send(betaId, protocol, message)
+				alpha.send(betaId, protocol, { "http://foo.bar": "BAZ" })
+			}, 2000)
 		}
 	})
 })

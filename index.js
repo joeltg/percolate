@@ -2,44 +2,31 @@ const EventEmitter = require("events")
 
 const { N3 } = require("furk")
 
-const jsonld = require("jsonld")
-const cbor = require("cbor")
-
 const pull = require("pull-stream/pull")
-const Pushable = require("pull-pushable")
+const pushable = require("pull-pushable")
 const drain = require("pull-stream/sinks/drain")
 const asyncMap = require("pull-stream/throughs/async-map")
-const { transform } = require("stream-to-pull-stream")
 
 const IPFS = require("ipfs")
 
 const config = require("./config.js")
 const libp2p = require("./libp2p.js")
 
-const { Buffer, PeerId } = IPFS
+const cborLd = require("./protocols/cbor-ld.js")
+const nQuads = require("./protocols/n-quads.js")
 
-// Underlay Protocol String
-const Protocol = "/x/ul/0.1.1/cbor-ld"
+const { format } = require("./utils.js")
+
+const { Buffer } = IPFS
 
 class Percolator extends EventEmitter {
 	static matchProtocol(protocol, sourceProtocol, callback) {
 		callback(null, protocol === sourceProtocol)
 	}
 
-	static canonize(data, callback) {
-		jsonld.canonize(
-			data,
-			{ algorithm: "URDNA2015", format: "application/n-quads" },
-			callback
-		)
-	}
-
 	static parse({ data, hash, size }, callback) {
 		const store = new N3.Store()
-		const parser = new N3.StreamParser({
-			format: "application/n-quads",
-			blankNodePrefix: "_:",
-		})
+		const parser = new N3.StreamParser({ format, blankNodePrefix: "_:" })
 
 		parser.on("error", err => callback(err))
 		parser.on("data", quad => store.addQuad(quad))
@@ -58,8 +45,16 @@ class Percolator extends EventEmitter {
 
 	constructor(repo, init, userConfig) {
 		super()
-		this.outbox = {}
+
 		this.handlers = []
+		this.protocols = [
+			cborLd,
+			// nQuads
+		]
+		this.outbox = {}
+		for (const { protocol } of this.protocols) {
+			this.outbox[protocol] = {}
+		}
 
 		this.ipfs = new IPFS({
 			repo: repo,
@@ -71,47 +66,66 @@ class Percolator extends EventEmitter {
 			libp2p: libp2p,
 		})
 
-		this.ready = new Promise((resolve, reject) => {
-			this.ipfs.on("ready", resolve)
-		})
+		this.ready = new Promise(resolve => this.ipfs.on("ready", resolve))
 
 		this.persist = this.persist.bind(this)
+		this.handlePeerConnect = this.handlePeerConnect.bind(this)
 	}
 
 	handlePeerConnect(peerInfo) {
-		if (peerInfo.protocols.has(Protocol)) {
-			console.log(this.id, "handlePeerConnect", peerInfo.id.toB58String())
-			this.ipfs.libp2p.dialProtocol(peerInfo, Protocol, (err, connection) => {
-				if (err) {
-					console.error(err)
-				} else {
-					console.log(this.id, "dialedProtocol", peerInfo.id.toB58String())
-					this.connect(peerInfo, connection)
-				}
-			})
+		const peer = peerInfo.id.toB58String()
+		console.log(this.id, "handlePeerConnect", peer)
+		for (const { protocol, encode, decode } of this.protocols) {
+			if (peerInfo.protocols.has(protocol)) {
+				this.ipfs.libp2p.dialProtocol(peerInfo, protocol, (err, connection) => {
+					if (err) {
+						console.error(err)
+					} else {
+						console.log(
+							this.id,
+							protocol,
+							"handling peer connect after dialing"
+						)
+						this.handleConnection(
+							peerInfo,
+							protocol,
+							encode,
+							connection,
+							decode
+						)
+					}
+				})
+			}
 		}
 	}
 
-	handleProtocol(_, connection) {
+	handleProtocol(protocol, encode, connection, decode) {
+		console.log(this.id, "handling the protocol", protocol)
 		connection.getPeerInfo((err, peerInfo) => {
 			if (err) {
 				console.error(err)
 			} else {
-				console.log(this.id, "handleProtocol", peerInfo.id.toB58String())
-				this.connect(peerInfo, connection)
+				console.log(this.id, protocol, peerInfo.id.toB58String())
+				console.log(
+					this.id,
+					protocol,
+					"handling protocol after getting peer info"
+				)
+
+				this.handleConnection(peerInfo, protocol, encode, connection, decode)
 			}
 		})
 	}
 
-	connect(peerInfo, connection) {
+	handleConnection(peerInfo, protocol, encode, connection, decode) {
 		const peer = peerInfo.id.toB58String()
-		this.outbox[peer] = Pushable()
+		console.log(this.id, "creating pushable", protocol, peer)
+		this.outbox[protocol][peer] = pushable()
 		pull(
-			this.outbox[peer],
-			transform(new cbor.Encoder()),
+			this.outbox[protocol][peer],
+			encode(),
 			connection,
-			transform(new cbor.Decoder()),
-			asyncMap(Percolator.canonize),
+			decode(),
 			asyncMap(this.persist),
 			asyncMap(Percolator.parse),
 			drain(message => this.tick(peer, message, 0), () => {})
@@ -145,7 +159,7 @@ class Percolator extends EventEmitter {
 
 	/**
 	 *
-	 * @callback {handler}
+	 * @callback handler
 	 * @param {string} peer - The sender's base58-encoded PeerId
 	 * @param {Object} message
 	 * @param {N3.Store} message.store
@@ -161,11 +175,12 @@ class Percolator extends EventEmitter {
 	 */
 	use(handler) {
 		this.handlers.push(handler)
+		return this
 	}
 
 	/**
 	 *
-	 * @callback {onStart}
+	 * @callback onStart
 	 * @param {Error} err
 	 * @param {PeerId} identity
 	 */
@@ -180,14 +195,16 @@ class Percolator extends EventEmitter {
 				if (err) {
 					callback(err)
 				} else {
-					this.ipfs.libp2p.on("peer:connect", peerInfo =>
-						this.handlePeerConnect(peerInfo)
-					)
-					this.ipfs.libp2p.handle(
-						Protocol,
-						(protocol, connection) => this.handleProtocol(protocol, connection),
-						Percolator.matchProtocol
-					)
+					this.ipfs.libp2p.on("peer:connect", this.handlePeerConnect)
+					for (const { protocol, encode, decode } of this.protocols) {
+						this.ipfs.libp2p.handle(
+							protocol,
+							(_, connection) =>
+								this.handleProtocol(protocol, encode, connection, decode),
+							Percolator.matchProtocol
+						)
+					}
+
 					this.ipfs.id((err, identity) => {
 						if (identity) {
 							this.id = identity.id
@@ -202,21 +219,20 @@ class Percolator extends EventEmitter {
 	/**
 	 *
 	 * @param {string} peer - The sender's base58-encoded PeerId
+	 * @param {string} protocol - The encoding protocol to use
 	 * @param {Object} message - a JSON-LD document
 	 */
-	send(peer, message) {
-		if (peer instanceof PeerId) {
-			peer = peer.toB58String()
-		}
-		if (this.outbox.hasOwnProperty(peer)) {
-			this.outbox[peer].push(message)
+	send(peer, protocol, message) {
+		if (this.outbox.hasOwnProperty(protocol)) {
+			if (this.outbox[protocol].hasOwnProperty(peer)) {
+				this.outbox[protocol][peer].push(message)
+			}
 		}
 	}
 }
 
 if (require.main === module) {
-	const percolator = new Percolator()
-	percolator.start()
+	new Percolator().start()
 } else {
 	module.exports = Percolator
 }
