@@ -1,6 +1,6 @@
 {
 	"name": "percolate",
-	"version": "0.2.0",
+	"version": "1.0.0",
 	"description": "Express for the decentralized semantic web",
 	"main": "index.js",
 	"scripts": {
