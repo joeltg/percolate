@@ -1,4 +1,4 @@
-const { N3 } = require("furk")
+const N3 = require("n3")
 
 const predicate = "http://underlay.mit.edu/ns#satisfies"
 const underlayTest = /^ul:\/ipfs\/[a-zA-Z0-9]{46}#_:c14n\d+$/

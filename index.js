@@ -1,6 +1,6 @@
 const EventEmitter = require("events")
 
-const { N3 } = require("furk")
+const N3 = require("n3")
 
 const pull = require("pull-stream/pull")
 const pushable = require("pull-pushable")
@@ -73,7 +73,6 @@ class Percolator extends EventEmitter {
 		console.log(this.id, "handlePeerConnect", peer)
 		for (const { protocol, encode, decode } of this.protocols) {
 			if (info.protocols.has(protocol)) {
-				console.log(info.protocols.has(protocol))
 				this.ipfs.libp2p.dialProtocol(info, protocol, (err, connection) => {
 					if (err) {
 						console.error(err)

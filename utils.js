@@ -1,5 +1,5 @@
 const jsonld = require("jsonld")
-const { N3 } = require("furk")
+const N3 = require("n3")
 
 const format = "application/n-quads"
 
