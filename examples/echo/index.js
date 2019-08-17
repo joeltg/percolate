@@ -38,7 +38,7 @@ const alpha = new Percolator(alphaPath, true, {
 
 alpha.use(log)
 
-alpha.start((err, { id: alphaId }) => {
+alpha.start((err, alphaId) => {
 	if (err) {
 		console.error(err)
 		return
@@ -68,7 +68,7 @@ alpha.start((err, { id: alphaId }) => {
 		})
 	})
 
-	beta.start((err, { id: betaId }) => {
+	beta.start((err, betaId) => {
 		if (err) {
 			console.error(err)
 		} else {

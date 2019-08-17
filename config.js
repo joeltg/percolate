@@ -3,5 +3,5 @@ module.exports = {
 		MDNS: { Enabled: false },
 		webRTCStar: { Enabled: false },
 	},
-	// Bootstrap: []
+	Bootstrap: [],
 }

@@ -1,15 +1,13 @@
 const TCP = require("libp2p-tcp")
-const Bootstrap = require("libp2p-bootstrap")
-const KadDHT = require("libp2p-kad-dht")
-const Multiplex = require("libp2p-mplex")
+const Multiplex = require("pull-mplex")
 const SECIO = require("libp2p-secio")
+const KadDHT = require("libp2p-kad-dht")
 
 module.exports = {
 	modules: {
 		transport: [TCP],
 		streamMuxer: [Multiplex],
 		connEncryption: [SECIO],
-		peerDiscovery: [Bootstrap],
 		dht: KadDHT,
 	},
 	config: {

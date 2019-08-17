@@ -20,6 +20,31 @@ const { format } = require("./utils.js")
 const { Buffer } = IPFS
 
 class Percolator extends EventEmitter {
+	constructor(repo, init, userConfig) {
+		super()
+
+		this.handlers = []
+		this.protocols = [cborLd, nQuads]
+
+		this.outbox = {}
+		for (const { protocol } of this.protocols) {
+			this.outbox[protocol] = {}
+		}
+
+		this.ipfs = new IPFS({
+			repo: repo,
+			init: init,
+			start: false,
+			relay: { enabled: false },
+			preload: { enabled: false },
+			config: Object.assign(config, userConfig),
+			libp2p: libp2p,
+		})
+
+		this.persist = this.persist.bind(this)
+		this.handlePeerConnect = this.handlePeerConnect.bind(this)
+	}
+
 	static matchProtocol(protocol, sourceProtocol, callback) {
 		callback(null, protocol === sourceProtocol)
 	}
@@ -43,56 +68,23 @@ class Percolator extends EventEmitter {
 		parser.end(data)
 	}
 
-	constructor(repo, init, userConfig) {
-		super()
-
-		this.handlers = []
-		this.protocols = [
-			cborLd,
-			// nQuads
-		]
-		this.outbox = {}
-		for (const { protocol } of this.protocols) {
-			this.outbox[protocol] = {}
-		}
-
-		this.ipfs = new IPFS({
-			repo: repo,
-			init: init,
-			start: false,
-			relay: { enabled: false },
-			preload: { enabled: false },
-			config: Object.assign(config, userConfig),
-			libp2p: libp2p,
-		})
-
-		this.ready = new Promise(resolve => this.ipfs.on("ready", resolve))
-
-		this.persist = this.persist.bind(this)
-		this.handlePeerConnect = this.handlePeerConnect.bind(this)
-	}
-
-	handlePeerConnect(peerInfo) {
-		const peer = peerInfo.id.toB58String()
+	handlePeerConnect(info) {
+		const peer = info.id.toB58String()
 		console.log(this.id, "handlePeerConnect", peer)
 		for (const { protocol, encode, decode } of this.protocols) {
-			if (peerInfo.protocols.has(protocol)) {
-				this.ipfs.libp2p.dialProtocol(peerInfo, protocol, (err, connection) => {
+			if (info.protocols.has(protocol)) {
+				console.log(info.protocols.has(protocol))
+				this.ipfs.libp2p.dialProtocol(info, protocol, (err, connection) => {
 					if (err) {
 						console.error(err)
+						return
 					} else {
 						console.log(
 							this.id,
 							protocol,
 							"handling peer connect after dialing"
 						)
-						this.handleConnection(
-							peerInfo,
-							protocol,
-							encode,
-							connection,
-							decode
-						)
+						this.handleConnection(info, protocol, encode, connection, decode)
 					}
 				})
 			}
@@ -101,24 +93,24 @@ class Percolator extends EventEmitter {
 
 	handleProtocol(protocol, encode, connection, decode) {
 		console.log(this.id, "handling the protocol", protocol)
-		connection.getPeerInfo((err, peerInfo) => {
+		connection.getPeerInfo((err, info) => {
 			if (err) {
 				console.error(err)
 			} else {
-				console.log(this.id, protocol, peerInfo.id.toB58String())
+				console.log(this.id, protocol, info.id.toB58String())
 				console.log(
 					this.id,
 					protocol,
 					"handling protocol after getting peer info"
 				)
 
-				this.handleConnection(peerInfo, protocol, encode, connection, decode)
+				this.handleConnection(info, protocol, encode, connection, decode)
 			}
 		})
 	}
 
-	handleConnection(peerInfo, protocol, encode, connection, decode) {
-		const peer = peerInfo.id.toB58String()
+	handleConnection(info, protocol, encode, connection, decode) {
+		const peer = info.id.toB58String()
 		console.log(this.id, "creating pushable", protocol, peer)
 		this.outbox[protocol][peer] = pushable()
 		pull(
@@ -190,30 +182,25 @@ class Percolator extends EventEmitter {
 	 * @param {onStart} callback
 	 */
 	start(callback) {
-		this.ready.then(() =>
-			this.ipfs.start(err => {
-				if (err) {
-					callback(err)
-				} else {
-					this.ipfs.libp2p.on("peer:connect", this.handlePeerConnect)
-					for (const { protocol, encode, decode } of this.protocols) {
-						this.ipfs.libp2p.handle(
-							protocol,
-							(_, connection) =>
-								this.handleProtocol(protocol, encode, connection, decode),
-							Percolator.matchProtocol
-						)
-					}
-
-					this.ipfs.id((err, identity) => {
-						if (identity) {
-							this.id = identity.id
-						}
-						callback(err, identity)
-					})
+		this.ipfs.ready
+			.then(() => this.ipfs.start())
+			.then(() => {
+				this.ipfs.libp2p.on("peer:connect", this.handlePeerConnect)
+				for (const { protocol, encode, decode } of this.protocols) {
+					this.ipfs.libp2p.handle(
+						protocol,
+						(_, connection) =>
+							this.handleProtocol(protocol, encode, connection, decode),
+						Percolator.matchProtocol
+					)
 				}
 			})
-		)
+			.then(() => this.ipfs.id())
+			.then(identity => {
+				this.id = identity.id
+				callback(null, identity.id)
+			})
+			.catch(err => callback(err))
 	}
 
 	/**

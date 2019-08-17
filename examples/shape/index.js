@@ -50,13 +50,13 @@ const alpha = new Percolator(alphaPath, true, {
 
 alpha.use(log)
 
-alpha.start((err, identity) => {
+alpha.start((err, alphaId) => {
 	if (err) {
 		console.error(err)
 		return
 	}
 
-	console.log("alpha:", identity.id)
+	console.log("alpha:", alphaId)
 
 	const beta = new Percolator(betaPath, true, {
 		Addresses: {
@@ -65,7 +65,7 @@ alpha.start((err, identity) => {
 			Gateway: "/ip4/127.0.0.1/tcp/8082",
 		},
 
-		Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${identity.id}`],
+		Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${alphaId}`],
 	})
 
 	function handler(peer, { store, results }, next) {
@@ -120,15 +120,15 @@ alpha.start((err, identity) => {
 		})
 	})
 
-	beta.start((err, identity) => {
+	beta.start((err, betaId) => {
 		if (err) {
 			console.error(err)
 		} else {
-			console.log("beta:", identity.id)
+			console.log("beta:", betaId)
 			setTimeout(() => {
 				console.log("sending message from alpha to beta")
-				alpha.send(identity.id, protocol, message)
-				alpha.send(identity.id, protocol, { "http://foo.bar": "BAZ" })
+				alpha.send(betaId, protocol, message)
+				alpha.send(betaId, protocol, { "http://foo.bar": "BAZ" })
 			}, 2000)
 		}
 	})

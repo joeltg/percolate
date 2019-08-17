@@ -10,7 +10,7 @@ function fromStore(store, callback) {
 		if (err) {
 			callback(err)
 		} else {
-			jsonld.fromRDF(result, { format }, callback)
+			jsonld.fromRDF(result, { format, useNativeTypes: true }, callback)
 		}
 	})
 }

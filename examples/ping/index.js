@@ -10,11 +10,22 @@ const log = require("../../tools/log.js")
 
 const { protocol } = require("../../protocols/cbor-ld.js")
 
-const message = {
+const data = {
 	"@context": { "@vocab": "http://schema.org/" },
-	"@type": "http://underlay.mit.edu/ns#Query",
+	"@type": "Volcano",
+	name: "Mount Fuji",
+	smokingAllowed: true,
+}
+
+const query = {
+	"@context": {
+		"@vocab": "http://schema.org/",
+		u: "http://underlay.mit.edu/ns#",
+	},
+	"@type": "u:Query",
 	"@graph": {
 		"@type": "Volcano",
+		name: {},
 		smokingAllowed: {},
 	},
 }
@@ -32,26 +43,30 @@ const alpha = new Percolator(alphaPath, true, {
 	},
 
 	Bootstrap: [
-		"/ip4/127.0.0.1/tcp/4001/ipfs/QmSqPMkw1ZqimMMrTvocP4f5dHqQGBxQtBB91HXGXs2rTu",
+		"/ip4/127.0.0.1/tcp/4001/ipfs/QmYxMiLd4GXeW8FTSFGUiaY8imCksY6HH9LBq86gaFiwXG",
 	],
 })
 
 alpha.use(log)
 
-alpha.start((err, identity) => {
+alpha.start((err, id) => {
 	if (err) {
 		console.error(err)
 		return
 	}
 
-	console.log("alpha:", identity.id)
+	console.log("alpha:", id)
 
 	setTimeout(() => {
-		console.log("sending message from alpha")
-		alpha.send(
-			"QmSqPMkw1ZqimMMrTvocP4f5dHqQGBxQtBB91HXGXs2rTu",
-			protocol,
-			message
-		)
+		console.log("sending message to alpha")
+		alpha.send("QmYxMiLd4GXeW8FTSFGUiaY8imCksY6HH9LBq86gaFiwXG", protocol, data)
+		setTimeout(() => {
+			console.log("sending query to alpha")
+			alpha.send(
+				"QmYxMiLd4GXeW8FTSFGUiaY8imCksY6HH9LBq86gaFiwXG",
+				protocol,
+				query
+			)
+		}, 3000)
 	}, 2000)
 })

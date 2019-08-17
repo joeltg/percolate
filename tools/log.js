@@ -6,7 +6,7 @@ module.exports = (peer, { store }, next) => {
 		if (err) {
 			console.error(err)
 		} else {
-			console.log(doc)
+			console.log(JSON.stringify(doc, null, "  "))
 		}
 	})
 }
