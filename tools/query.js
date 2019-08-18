@@ -27,7 +27,6 @@ function Query(queries) {
 	}
 
 	function tick(peer, message, next, index) {
-		console.log("TICKING IN THE QUERY TICKER")
 		const { graphs, results } = message
 		for (let i = index; i < queries.length; i++) {
 			const { schema, start, handler } = queries[i]
