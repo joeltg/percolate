@@ -2,8 +2,8 @@ const fs = require("fs")
 const path = require("path")
 
 const N3 = require("n3")
-const ShExParser = require("shex-parser")
-const ShExCore = require("shex-core")
+const ShExParser = require("../shex.js/packages/shex-parser")
+const ShExCore = require("../shex.js/packages/shex-core")
 
 const Shape = require("./shape.js")
 

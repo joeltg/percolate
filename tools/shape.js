@@ -1,5 +1,5 @@
-const ShExParser = require("shex-parser")
-const ShExCore = require("shex-core")
+const ShExParser = require("../shex.js/packages/shex-parser")
+const ShExCore = require("../shex.js/packages/shex-core")
 const N3 = require("n3")
 
 /**
