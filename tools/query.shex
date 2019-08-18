@@ -2,6 +2,6 @@ PREFIX u: <http://underlay.mit.edu/ns#>
 
 start = @_:query
 
-_:query bnode CLOSED {
+_:query CLOSED {
 	a [ u:Query ]
 }

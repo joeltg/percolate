@@ -215,9 +215,10 @@ class Percolator extends EventEmitter {
 	send(peer, protocol, message) {
 		if (this.outbox.hasOwnProperty(protocol)) {
 			if (this.outbox[protocol].hasOwnProperty(peer)) {
-				this.outbox[protocol][peer].push(message)
+				return this.outbox[protocol][peer].push(message)
 			}
 		}
+		console.error(`No connection to peer ${peer} on protocol ${protocol}`)
 	}
 }
 
