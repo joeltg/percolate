@@ -1,0 +1,17 @@
+PREFIX u: <http://underlay.mit.edu/ns#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+
+start = @_:bundle
+
+_:bundle bnode CLOSED {
+  a [ prov:Bundle ] ;
+  dcterms:extent xsd:integer ? ;
+  ( u:index bnode ) * ;
+  (
+    u:enumerates bnode ;
+    |
+    u:enumerates iri /^ul:\/ipfs\/[a-zA-Z0-9]{46}#_:[a-zA-Z0-9-]+/ ;
+  )
+}

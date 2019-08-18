@@ -1,6 +1,6 @@
 const N3 = require("n3")
-const ShExParser = require("@shexjs/parser")
-const ShExCore = require("@shexjs/core")
+const ShExParser = require("shex-parser")
+const ShExCore = require("shex-core")
 
 /**
  * Invoke the next handler in the stack.

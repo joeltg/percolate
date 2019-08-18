@@ -1,0 +1,13 @@
+PREFIX u: <http://underlay.mit.edu/ns#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+
+start = @_:entity
+
+_:entity bnode CLOSED {
+  a [ prov:Entity ] ;
+  (
+    u:satisfies bnode ;
+    |
+    u:satisfies iri /^ul:\/ipfs\/[a-zA-Z0-9]{46}#_:[a-zA-Z0-9-]+/ ;
+  )
+}

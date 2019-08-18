@@ -31,8 +31,8 @@
 		"pull-stream": "^3.6.14",
 		"stream-to-pull-stream": "^1.7.3",
 		"varint": "^5.0.0",
-		"@shexjs/core": "file:shex.js/packages/shex-core",
-		"@shexjs/parser": "file:shex.js/packages/shex-parser"
+		"shex-core": "file:shex.js/packages/shex-core",
+		"shex-parser": "file:shex.js/packages/shex-parser"
 	},
 	"devDependencies": {
 		"fs-extra": "^8.1.0"
