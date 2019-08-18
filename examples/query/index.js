@@ -57,57 +57,63 @@ const alpha = new Percolator(alphaPath, true, {
 
 alpha.use(log)
 
-alpha.start((err, alphaId) => {
-	if (err) {
-		console.error(err)
-		return
-	}
+try {
+	alpha.start((err, alphaId) => {
+		if (err) {
+			console.error(err)
+			return
+		}
 
-	console.log("alpha:", alphaId)
+		console.log("alpha:", alphaId)
 
-	const beta = new Percolator(betaPath, true, {
-		Addresses: {
-			Swarm: ["/ip4/127.0.0.1/tcp/4003"],
-			API: "/ip4/127.0.0.1/tcp/5003",
-			Gateway: "/ip4/127.0.0.1/tcp/8082",
-		},
-
-		Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${alphaId}`],
-	})
-
-	beta.use(
-		Query([
-			{
-				schema: volcanoQuerySchema,
-				handler(peer, message, next) {
-					console.log(peer, message, JSON.stringify(message.queryResults))
-				},
+		const beta = new Percolator(betaPath, true, {
+			Addresses: {
+				Swarm: ["/ip4/127.0.0.1/tcp/4003"],
+				API: "/ip4/127.0.0.1/tcp/5003",
+				Gateway: "/ip4/127.0.0.1/tcp/8082",
 			},
-		])
-	)
 
-	beta.use((peer, { store }, next) => {
-		console.log("beta: received a non-volcano-query from peer", peer)
-		fromStore(store, (err, doc) => {
+			Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${alphaId}`],
+		})
+
+		beta.use(
+			Query([
+				{
+					schema: volcanoQuerySchema,
+					handler(peer, message, next) {
+						console.log(peer, message, JSON.stringify(message.queryResults))
+					},
+				},
+			])
+		)
+
+		beta.use((peer, { store }, next) => {
+			console.log("beta: received a non-volcano-query from peer", peer)
+			fromStore(store, (err, doc) => {
+				if (err) {
+					console.error(err)
+				} else {
+					console.log("beta: echoing non-volcano-query back to sender")
+					beta.send(peer, protocol, doc)
+				}
+			})
+		})
+
+		beta.start((err, betaId) => {
 			if (err) {
 				console.error(err)
 			} else {
-				console.log("beta: echoing non-volcano-query back to sender")
-				beta.send(peer, protocol, doc)
+				console.log("beta:", betaId)
+				setTimeout(() => {
+					console.log("sending messages from alpha to beta")
+					alpha.send(betaId, protocol, message)
+					alpha.send(betaId, protocol, { "http://foo.bar": "BAZ" })
+				}, 2000)
 			}
 		})
 	})
-
-	beta.start((err, betaId) => {
-		if (err) {
-			console.error(err)
-		} else {
-			console.log("beta:", betaId)
-			setTimeout(() => {
-				console.log("sending messages from alpha to beta")
-				alpha.send(betaId, protocol, message)
-				alpha.send(betaId, protocol, { "http://foo.bar": "BAZ" })
-			}, 2000)
-		}
-	})
-})
+} catch (e) {
+	console.trace()
+	console.error("FJKDLSFJDS")
+	console.error(e)
+}

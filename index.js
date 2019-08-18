@@ -181,6 +181,10 @@ class Percolator extends EventEmitter {
 	 * @param {onStart} callback
 	 */
 	start(callback) {
+		if (typeof callback !== "function") {
+			callback = () => {}
+		}
+
 		this.ipfs.ready
 			.then(() => this.ipfs.start())
 			.then(() => {
