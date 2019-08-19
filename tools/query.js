@@ -23,9 +23,7 @@ function Query(queryShapes) {
 		for (let i = index; i < queryShapes.length; i++) {
 			const { schema, start, handler } = queryShapes[i]
 			const results = {}
-			console.log("okay we're gonna test the graphs", query.graphs)
 			for (const node of query.graphs) {
-				console.log("testing", node)
 				const store = graphs[node]
 				const db = ShExCore.Util.makeN3DB(store)
 
@@ -33,8 +31,6 @@ function Query(queryShapes) {
 				const validator = ShExCore.Validator.construct(schema)
 				store.forSubjects(({ id }) => {
 					const result = validator.validate(db, id, start)
-					console.log("testing subject", id)
-					console.log("got result", result)
 					if (
 						result.hasOwnProperty("solutions") ||
 						result.hasOwnProperty("solution")
@@ -72,7 +68,6 @@ function Query(queryShapes) {
 			"http://underlay.mit.edu/ns#Query"
 		)
 
-		console.log("okay here are the graphs we got", message.query.graphs)
 		if (message.query.graphs.length > 0) {
 			return tick(peer, message, next, 0)
 		} else {
