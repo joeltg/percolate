@@ -66,4 +66,4 @@ const decode = () => read => (end, cb) => {
 	read(end, readBack)
 }
 
-module.exports = { protocol, encode, decode }
+module.exports = _ => ({ protocol, encode, decode })

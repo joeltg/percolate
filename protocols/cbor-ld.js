@@ -16,4 +16,7 @@ function canonize(data, cb) {
 const encode = () => transform(new cbor.Encoder())
 const decode = () => pull(transform(new cbor.Decoder()), asyncMap(canonize))
 
-module.exports = { protocol, encode, decode }
+module.exports = ({ ipfs }) => {
+	jsonld.documentLoader = Loader(ipfs)
+	return { protocol, encode, decode }
+}

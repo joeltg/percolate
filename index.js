@@ -24,15 +24,6 @@ class Percolator extends EventEmitter {
 	constructor(repo, init, userConfig) {
 		super()
 
-		this.handlers = []
-		this.protocols = { "cbor-ld": cborLd, "n-quads": nQuads }
-
-		this.outbox = {}
-		for (const p in this.protocols) {
-			const { protocol } = this.protocols[p]
-			this.outbox[protocol] = {}
-		}
-
 		this.ipfs = new IPFS({
 			repo: repo,
 			init: init,
@@ -42,6 +33,18 @@ class Percolator extends EventEmitter {
 			config: Object.assign(config, userConfig),
 			libp2p: libp2p,
 		})
+
+		this.handlers = []
+		this.protocols = {
+			"cbor-ld": cborLd({ ipfs: this.ipfs }),
+			"n-quads": nQuads({}),
+		}
+
+		this.outbox = {}
+		for (const p in this.protocols) {
+			const { protocol } = this.protocols[p]
+			this.outbox[protocol] = {}
+		}
 
 		this.persist = this.persist.bind(this)
 		this.handlePeerConnect = this.handlePeerConnect.bind(this)
