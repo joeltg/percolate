@@ -1,4 +1,3 @@
-const N3 = require("n3")
 const ShExParser = require("shex-parser")
 const ShExCore = require("shex-core")
 
