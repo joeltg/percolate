@@ -23,22 +23,23 @@ function Query(queryShapes) {
 		for (let i = index; i < queryShapes.length; i++) {
 			const { schema, start, handler } = queryShapes[i]
 			const results = {}
+			console.log("okay we're gonna test the graphs", query.graphs)
 			for (const node of query.graphs) {
+				console.log("testing", node)
 				const store = graphs[node]
 				const db = ShExCore.Util.makeN3DB(store)
 
 				results[node] = []
 				const validator = ShExCore.Validator.construct(schema)
-				store.forSubjects(subject => {
-					const id = N3.DataFactory.internal.toId(subject)
+				store.forSubjects(({ id }) => {
 					const result = validator.validate(db, id, start)
+					console.log("testing subject", id)
+					console.log("got result", result)
 					if (
 						result.hasOwnProperty("solutions") ||
 						result.hasOwnProperty("solution")
 					) {
 						results[node].push(result)
-					} else {
-						console.error("aaaa ---- aaaaa", result)
 					}
 				})
 
@@ -66,11 +67,12 @@ function Query(queryShapes) {
 	return (peer, message, next) => {
 		message.query = { graphs: [] }
 		message.graphs[""].forSubjects(
-			subject => message.query.graphs.push(subject.id),
+			({ id }) => message.query.graphs.push(id),
 			"http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
 			"http://underlay.mit.edu/ns#Query"
 		)
 
+		console.log("okay here are the graphs we got", message.query.graphs)
 		if (message.query.graphs.length > 0) {
 			return tick(peer, message, next, 0)
 		} else {
