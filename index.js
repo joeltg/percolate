@@ -25,10 +25,11 @@ class Percolator extends EventEmitter {
 		super()
 
 		this.handlers = []
-		this.protocols = [cborLd, nQuads]
+		this.protocols = { "cbor-ld": cborLd, "n-quads": nQuads }
 
 		this.outbox = {}
-		for (const { protocol } of this.protocols) {
+		for (const p in this.protocols) {
+			const { protocol } = this.protocols[p]
 			this.outbox[protocol] = {}
 		}
 
@@ -73,7 +74,8 @@ class Percolator extends EventEmitter {
 	handlePeerConnect(info) {
 		const peer = info.id.toB58String()
 		console.log(this.id, "handlePeerConnect", peer)
-		for (const { protocol, encode, decode } of this.protocols) {
+		for (const p in this.protocols) {
+			const { protocol, encode, decode } = this.protocols[p]
 			if (info.protocols.has(protocol)) {
 				this.ipfs.libp2p.dialProtocol(info, protocol, (err, connection) => {
 					if (err) {
@@ -191,7 +193,8 @@ class Percolator extends EventEmitter {
 			.then(() => this.ipfs.start())
 			.then(() => {
 				this.ipfs.libp2p.on("peer:connect", this.handlePeerConnect)
-				for (const { protocol, encode, decode } of this.protocols) {
+				for (const p in this.protocols) {
+					const { protocol, encode, decode } = this.protocols[p]
 					this.ipfs.libp2p.handle(
 						protocol,
 						(_, connection) =>
