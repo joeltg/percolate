@@ -20,8 +20,6 @@ const { fromStore } = require("../../utils.js")
 const log = require("../../tools/log.js")
 const Shape = require("../../tools/shape.js")
 
-const { protocol } = require("../../protocols/cbor-ld.js")
-
 const message = {
 	"@context": { "@vocab": "http://schema.org/" },
 	"@type": "Volcano",
@@ -47,6 +45,8 @@ const alpha = new Percolator(alphaPath, true, {
 
 	Bootstrap: [],
 })
+
+const { protocol } = alpha.protocols["cbor-ld"]
 
 alpha.use(log)
 

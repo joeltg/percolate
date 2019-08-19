@@ -11,7 +11,6 @@ const fs = require("fs-extra")
 const Percolator = require("../../index.js")
 const log = require("../../tools/log.js")
 const { fromStore } = require("../../utils.js")
-const { protocol } = require("../../protocols/cbor-ld.js")
 
 const message = {
 	"@context": { "@vocab": "http://schema.org/" },
@@ -35,6 +34,8 @@ const alpha = new Percolator(alphaPath, true, {
 
 	Bootstrap: [],
 })
+
+const { protocol } = alpha.protocols["cbor-ld"]
 
 alpha.use(log)
 

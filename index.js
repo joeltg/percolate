@@ -145,7 +145,11 @@ class Percolator extends EventEmitter {
 		if (index < this.handlers.length) {
 			const handler = this.handlers[index]
 			const next = () => this.tick(peer, message, index + 1)
-			handler(peer, message, next)
+			try {
+				handler(peer, message, next)
+			} catch (e) {
+				console.error(e)
+			}
 		}
 	}
 

@@ -20,8 +20,6 @@ const log = require("../../tools/log.js")
 const Query = require("../../tools/query.js")
 const { fromStore } = require("../../utils.js")
 
-const { protocol } = require("../../protocols/cbor-ld.js")
-
 const volcanoQuerySchemaPath = path.resolve(__dirname, "volcanoQuery.shex")
 const volcanoQuerySchema = fs.readFileSync(volcanoQuerySchemaPath, "utf-8")
 
@@ -56,6 +54,8 @@ const alpha = new Percolator(alphaPath, true, {
 })
 
 alpha.use(log)
+
+const { protocol } = alpha.protocols["cbor-ld"]
 
 alpha.start((err, alphaId) => {
 	if (err) {
