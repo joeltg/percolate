@@ -66,7 +66,7 @@ function Query(queryShapes) {
 			"http://underlay.mit.edu/ns#Query"
 		)
 
-		if (message.query.graphs.lengt > 0) {
+		if (message.query.graphs.length > 0) {
 			return tick(peer, message, next, 0)
 		} else {
 			return next()
