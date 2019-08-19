@@ -68,7 +68,7 @@ alpha.start((err, alphaId) => {
 		Bootstrap: [`/ip4/127.0.0.1/tcp/4002/ipfs/${alphaId}`],
 	})
 
-	function handler(peer, { store, results }, next) {
+	function handler(peer, { shape: { results } }, next) {
 		console.log("beta: received a volcano from", peer)
 		const [
 			{

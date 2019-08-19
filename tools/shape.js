@@ -51,18 +51,14 @@ function Shape(shapes) {
 			})
 
 			if (results.length > 0) {
-				message.results = results
-				handler(peer, message, () => tick(peer, message, next, i + 1))
-				return
+				message.shape = { results }
+				return handler(peer, message, () => tick(peer, message, next, i + 1))
 			}
 		}
-		next()
+		return next()
 	}
 
-	return (peer, message, next) => {
-		message.default = ShExCore.Util.makeN3DB(message.graphs[""])
-		return tick(peer, message, next, 0)
-	}
+	return (peer, message, next) => tick(peer, message, next, 0)
 }
 
 module.exports = Shape
