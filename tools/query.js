@@ -32,7 +32,10 @@ function Query(queryShapes) {
 				store.forSubjects(subject => {
 					const id = N3.DataFactory.internal.toId(subject)
 					const result = validator.validate(db, id, start)
-					if (result.type === "ShapeTest") {
+					if (
+						result.type === "ShapeTest" ||
+						result.type === "ShapeAndResults"
+					) {
 						results[node].push(result)
 					}
 				})
