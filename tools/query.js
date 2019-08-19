@@ -37,6 +37,8 @@ function Query(queryShapes) {
 						result.hasOwnProperty("solution")
 					) {
 						results[node].push(result)
+					} else {
+						console.error("aaaa ---- aaaaa", result)
 					}
 				})
 
