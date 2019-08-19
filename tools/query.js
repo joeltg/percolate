@@ -33,8 +33,8 @@ function Query(queryShapes) {
 					const id = N3.DataFactory.internal.toId(subject)
 					const result = validator.validate(db, id, start)
 					if (
-						result.type === "ShapeTest" ||
-						result.type === "ShapeAndResults"
+						result.hasOwnProperty("solutions") ||
+						result.hasOwnProperty("solution")
 					) {
 						results[node].push(result)
 					}
