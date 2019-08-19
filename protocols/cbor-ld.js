@@ -1,6 +1,7 @@
 const pull = require("pull-stream/pull")
 const cbor = require("cbor")
 const jsonld = require("jsonld")
+const Loader = require("dweb-loader")
 
 const asyncMap = require("pull-stream/throughs/async-map")
 const { transform } = require("stream-to-pull-stream")
