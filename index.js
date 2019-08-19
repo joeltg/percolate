@@ -1,6 +1,7 @@
 const EventEmitter = require("events")
 
 const N3 = require("n3")
+const ShExCore = require("shex-core")
 
 const pull = require("pull-stream/pull")
 const pushable = require("pull-pushable")
@@ -62,9 +63,10 @@ class Percolator extends EventEmitter {
 				graphs[id] = new N3.Store()
 				store.forEach(quad => graphs[id].addQuad(quad), null, null, null, graph)
 			})
-			callback(null, { store, graphs, hash, size })
+			const message = { store, graphs, hash, size }
+			message.default = ShExCore.Util.makeN3DB(graphs[""])
+			callback(null, message)
 		})
-
 		parser.end(data)
 	}
 

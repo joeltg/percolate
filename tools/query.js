@@ -1,22 +1,14 @@
-const fs = require("fs")
-const path = require("path")
-
 const N3 = require("n3")
 const ShExParser = require("shex-parser")
 const ShExCore = require("shex-core")
 
-const Shape = require("./shape.js")
-
-const querySchemaPath = path.resolve(__dirname, "query.shex")
-const querySchema = fs.readFileSync(querySchemaPath, "utf-8")
-
 /**
  *
- * @param {{schema: string, start: string, handler: handler}[]} queries
+ * @param {{schema: string, start: string, handler: handler}[]} queryShapes
  */
-function Query(queries) {
+function Query(queryShapes) {
 	const parser = ShExParser.construct()
-	for (const query of queries) {
+	for (const query of queryShapes) {
 		if (typeof query.schema === "string") {
 			query.schema = parser.parse(query.schema)
 		}
@@ -27,31 +19,31 @@ function Query(queries) {
 	}
 
 	function tick(peer, message, next, index) {
-		const { graphs, results } = message
-		for (let i = index; i < queries.length; i++) {
-			const { schema, start, handler } = queries[i]
-			const queryResults = {}
-			for (const { node } of results) {
+		const { graphs, query } = message
+		for (let i = index; i < queryShapes.length; i++) {
+			const { schema, start, handler } = queryShapes[i]
+			const results = {}
+			for (const node of query.graphs) {
 				const store = graphs[node]
 				const db = ShExCore.Util.makeN3DB(store)
 
-				const results = []
+				results[node] = []
 				const validator = ShExCore.Validator.construct(schema)
 				store.forSubjects(subject => {
 					const id = N3.DataFactory.internal.toId(subject)
 					const result = validator.validate(db, id, start)
 					if (result.type === "ShapeTest") {
-						results.push(result)
+						results[node].push(result)
 					}
 				})
 
-				if (results.length > 0) {
-					queryResults[node] = results
+				if (results[node].length === 0) {
+					delete results[node]
 				}
 			}
 
-			if (Object.keys(queries).length > 0) {
-				message.queryResults = queryResults
+			if (Object.keys(results).length > 0) {
+				message.query.results = results
 				handler(peer, message, () => tick(peer, message, next, i + 1))
 				return
 			}
@@ -59,12 +51,27 @@ function Query(queries) {
 		next()
 	}
 
-	const queryShape = {
-		schema: querySchema,
-		handler: (peer, message, next) => tick(peer, message, next, 0),
-	}
+	// const queryShape = {
+	// 	schema: querySchema,
+	// 	handler: (peer, message, next) => tick(peer, message, next, 0),
+	// }
 
-	return Shape([queryShape])
+	// return Shape([queryShape])
+
+	return (peer, message, next) => {
+		message.query = { graphs: [] }
+		message.graphs[""].forSubjects(
+			subject => message.query.graphs.push(subject.id),
+			"http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+			"http://underlay.mit.edu/ns#Query"
+		)
+
+		if (message.query.graphs.lengt > 0) {
+			return tick(peer, message, next, 0)
+		} else {
+			return next()
+		}
+	}
 }
 
 module.exports = Query

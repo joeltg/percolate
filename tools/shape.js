@@ -42,9 +42,9 @@ function Shape(shapes) {
 			const { schema, start, handler } = shapes[i]
 			const results = []
 			const validator = ShExCore.Validator.construct(schema)
-			message.defaultStore.forSubjects(subject => {
+			message.graphs[""].forSubjects(subject => {
 				const id = N3.DataFactory.internal.toId(subject)
-				const result = validator.validate(message.defaultDB, id, start)
+				const result = validator.validate(message.default, id, start)
 				if (result.type === "ShapeTest") {
 					results.push(result)
 				}
@@ -60,8 +60,7 @@ function Shape(shapes) {
 	}
 
 	return (peer, message, next) => {
-		message.defaultStore = message.graphs[""]
-		message.defaultDB = ShExCore.Util.makeN3DB(message.defaultStore)
+		message.default = ShExCore.Util.makeN3DB(message.graphs[""])
 		return tick(peer, message, next, 0)
 	}
 }

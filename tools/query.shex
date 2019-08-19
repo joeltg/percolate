@@ -1,7 +1,0 @@
-PREFIX u: <http://underlay.mit.edu/ns#>
-
-start = @_:query
-
-_:query CLOSED {
-	a [ u:Query ]
-}
